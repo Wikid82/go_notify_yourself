@@ -90,16 +90,16 @@ func TestWrapperIntegration_RejectsTokenizedQueryWithoutEcho(t *testing.T) {
 }
 
 // TestWrapperIntegration_HeaderAllowlistSafety exercises the outbound
-// header allowlist end-to-end. Note this differs from Charon's original
-// port of this test: Charon's variant additionally asserted that
-// Authorization was stripped, but that relied on a stripping behavior
-// specific to Charon's internal/network safe HTTP client (supplied via
-// ClientFactory in Charon, not part of this module). This module's own
-// sanitizeOutboundHeaders allowlist *keeps* Authorization deliberately —
-// it's required for ntfy's Bearer-token auth (see transport's
-// TestSanitizeOutboundHeadersAllowlist) — so this test asserts the
-// module's actual documented contract: only non-allowlisted headers like
-// Cookie or arbitrary custom headers are stripped.
+// header allowlist end-to-end. Note this differs from the original
+// (pre-extraction) version of this test: that variant additionally
+// asserted that Authorization was stripped, but that relied on a stripping
+// behavior specific to the host application's own safe HTTP client
+// (supplied via ClientFactory there, not part of this module). This
+// module's own sanitizeOutboundHeaders allowlist *keeps* Authorization
+// deliberately — it's required for ntfy's Bearer-token auth (see
+// transport's TestSanitizeOutboundHeadersAllowlist) — so this test asserts
+// the module's actual documented contract: only non-allowlisted headers
+// like Cookie or arbitrary custom headers are stripped.
 func TestWrapperIntegration_HeaderAllowlistSafety(t *testing.T) {
 	t.Parallel()
 

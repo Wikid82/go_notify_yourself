@@ -134,7 +134,7 @@ func TestClientSendSetsDefaultUserAgent(t *testing.T) {
 	if err := client.Send(context.Background(), notify.Message{Body: "hello"}); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if got := rt.lastRequest.Header.Get("User-Agent"); got == "" || strings.Contains(got, "Charon") {
-		t.Fatalf("expected a neutral, unbranded User-Agent, got %q", got)
+	if got := rt.lastRequest.Header.Get("User-Agent"); got != "notify-transport/1.0" {
+		t.Fatalf("expected the neutral, unbranded default User-Agent, got %q", got)
 	}
 }

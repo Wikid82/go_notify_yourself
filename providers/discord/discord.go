@@ -39,9 +39,9 @@ type Client struct {
 var _ notify.Sender = (*Client)(nil)
 
 // New constructs a Discord Client. w performs the actual dispatch — see
-// transport.NewWrapper. Unlike Charon's original implementation (where
-// Discord dispatch bypassed the SSRF-safe wrapper entirely), Send always
-// goes through w, gaining retry/backoff it previously lacked.
+// transport.NewWrapper. Unlike some ad hoc Discord integrations (where
+// dispatch bypasses SSRF-safe wrappers entirely), Send always goes through
+// w, gaining retry/backoff.
 func New(cfg Config, w *transport.Wrapper) *Client {
 	return &Client{cfg: cfg, wrapper: w}
 }

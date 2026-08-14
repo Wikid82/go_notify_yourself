@@ -26,17 +26,23 @@ const MaxTemplateSize = 10 * 1024
 // templates (e.g. deeply nested range/recursion) hanging a dispatch.
 const ExecTimeout = 5 * time.Second
 
+// DefaultUserAgent is the outbound User-Agent every HTTP-based provider
+// package sends by default: a generic, unbranded value per the extraction
+// spec (§3.3.4) — a host application can still override it per-request if
+// it wants its own UA string.
+const DefaultUserAgent = "notify-transport/1.0"
+
 // MinimalTemplate is the built-in "minimal" JSON template shared by every
-// provider package that supports JSON templates. It mirrors Charon's
-// original minimal template field names exactly.
+// provider package that supports JSON templates. It mirrors the ported
+// original's minimal template field names exactly.
 const MinimalTemplate = `{"message": {{toJSON .Message}}, "title": {{toJSON .Title}}, "time": {{toJSON .Time}}, "event": {{toJSON .EventType}}}`
 
-// DetailedTemplate is the built-in "detailed" JSON template. Unlike
-// Charon's original (which exposed HostName/HostIP/ServiceCount/Services
-// as top-level JSON fields), host-specific extras are nested under "data"
-// via notify.Message.Data — see TemplateData for the full field mapping.
-// This is a deliberate, documented payload-shape change from the ported
-// original (spec §3.6 step 5 / §7 risk 1b).
+// DetailedTemplate is the built-in "detailed" JSON template. Unlike the
+// ported original (which exposed host-specific fields such as hostname/IP/
+// service-count as top-level JSON fields), host-specific extras are nested
+// under "data" via notify.Message.Data — see TemplateData for the full
+// field mapping. This is a deliberate, documented payload-shape change
+// from the ported original (spec §3.6 step 5 / §7 risk 1b).
 const DetailedTemplate = `{"title": {{toJSON .Title}}, "message": {{toJSON .Message}}, "time": {{toJSON .Time}}, "event": {{toJSON .EventType}}, "data": {{toJSON .Data}}}`
 
 // funcMap supplies the "toJSON" template helper used by every built-in and
@@ -51,8 +57,8 @@ var funcMap = template.FuncMap{
 // SelectTemplate resolves which template string to use given a selector
 // ("minimal" | "detailed" | "custom" | "" ) and a possibly-empty custom
 // template string, falling back to minimalTemplate when selector is
-// unrecognized/empty and custom is also empty. Mirrors Charon's
-// sendJSONPayload/RenderTemplate template-selection switch.
+// unrecognized/empty and custom is also empty. Mirrors the ported
+// original's template-selection switch.
 func SelectTemplate(selector, custom, minimalTemplate, detailedTemplate string) string {
 	switch strings.ToLower(strings.TrimSpace(selector)) {
 	case "detailed":
@@ -67,13 +73,13 @@ func SelectTemplate(selector, custom, minimalTemplate, detailedTemplate string) 
 	}
 }
 
-// TemplateData adapts a notify.Message into the field names Charon's
-// original built-in templates (and any pre-existing custom templates)
+// TemplateData adapts a notify.Message into the field names the ported
+// original's built-in templates (and any pre-existing custom templates)
 // expect: Title, Message (from msg.Body), Time (RFC3339-formatted string —
 // matching the original's data["Time"] string format, not Go's default
 // nanosecond-precision JSON time encoding), EventType, and Data
-// (host-supplied extras, replacing the old flat
-// HostName/HostIP/ServiceCount/Services fields — see DetailedTemplate).
+// (host-supplied extras, replacing the old flat hostname/IP/service-count
+// fields — see DetailedTemplate).
 func TemplateData(msg notify.Message) map[string]any {
 	msg = msg.Normalized()
 	return map[string]any{
