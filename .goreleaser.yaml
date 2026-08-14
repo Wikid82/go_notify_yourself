@@ -1,0 +1,41 @@
+version: 2
+
+# go_notify_yourself is a pure Go library (`go get` consumer), not a
+# deployable. Unlike a typical GoReleaser config, there is intentionally no
+# builds/archives/nfpms/dockers section — nothing here produces a binary or
+# container image. This config exists purely to drive changelog generation
+# and the GitHub Release entry on every tagged version.
+
+project_name: go_notify_yourself
+
+# A Go library has no binary artifact to produce for a release — consumers
+# `go get` the tagged module directly. GoReleaser defaults to building a
+# binary if `builds` is omitted entirely, so it must be explicitly emptied
+# here rather than left out.
+builds:
+  - skip: true
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+  groups:
+    - title: "Features"
+      regexp: '^feat(\(.+\))?!?:'
+      order: 0
+    - title: "Fixes"
+      regexp: '^fix(\(.+\))?!?:'
+      order: 1
+    - title: "Other"
+      order: 999
+
+release:
+  github:
+    owner: Wikid82
+    name: go_notify_yourself
+  header: |
+    ## go_notify_yourself {{ .Tag }}
+
+    `go get github.com/Wikid82/go_notify_yourself@{{ .Tag }}`
