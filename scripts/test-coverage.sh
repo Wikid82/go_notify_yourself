@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 # Runs the full test suite with coverage and enforces a minimum coverage
-# threshold on every package that has test files. Mirrors the intent of
-# Charon's own coverage gate, scaled down for this repo's size.
+# threshold on every package that has test files.
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
