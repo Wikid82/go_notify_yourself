@@ -128,14 +128,16 @@ func defaultClientFactory(bool, int) *http.Client {
 	return &http.Client{Timeout: 10 * time.Second}
 }
 
-// NewWrapper constructs a Wrapper. With no options, it uses a plain
-// *http.Client with no SSRF hardening of its own and a 3-attempt retry
-// policy with 200ms/2s backoff. Callers should supply WithURLValidator
-// (this package's DefaultURLValidator is a reasonable, conservative
-// starting point) and, for production traffic, WithClientFactory.
+// NewWrapper constructs a Wrapper. With no options, it uses
+// DefaultURLValidator (a conservative, dependency-free SSRF check), a plain
+// *http.Client with no additional SSRF hardening of its own, and a
+// 3-attempt retry policy with 200ms/2s backoff. Production hosts should
+// supply their own WithClientFactory and, typically, their own
+// WithURLValidator backed by their existing SSRF infrastructure.
 func NewWrapper(opts ...Option) *Wrapper {
 	cfg := wrapperConfig{
 		clientFactory: defaultClientFactory,
+		urlValidator:  DefaultURLValidator,
 		retryPolicy: RetryPolicy{
 			MaxAttempts: 3,
 			BaseDelay:   200 * time.Millisecond,
@@ -144,6 +146,9 @@ func NewWrapper(opts ...Option) *Wrapper {
 	}
 	for _, opt := range opts {
 		opt(&cfg)
+	}
+	if cfg.urlValidator == nil {
+		cfg.urlValidator = DefaultURLValidator
 	}
 
 	return &Wrapper{

@@ -92,7 +92,15 @@ func TestWrapperSendRejectsQueryAuthCaseVariants(t *testing.T) {
 }
 
 func TestWrapperSendNoURLValidatorConfigured(t *testing.T) {
-	wrapper := NewWrapper(WithAllowHTTP(true))
+	// NewWrapper always defaults to DefaultURLValidator, so exercising the
+	// "no validator" defensive branch in Send requires constructing a
+	// Wrapper directly with its zero-value urlValidator (only possible
+	// from within this package, since the field is unexported).
+	wrapper := &Wrapper{
+		clientFactory: defaultClientFactory,
+		retryPolicy:   RetryPolicy{MaxAttempts: 1},
+		allowHTTP:     true,
+	}
 
 	_, err := wrapper.Send(context.Background(), Request{
 		URL:  "http://example.com/hook",
@@ -100,6 +108,13 @@ func TestWrapperSendNoURLValidatorConfigured(t *testing.T) {
 	})
 	if err == nil || !strings.Contains(err.Error(), "no URL validator configured") {
 		t.Fatalf("expected explicit no-validator error, got: %v", err)
+	}
+}
+
+func TestNewWrapperDefaultsToDefaultURLValidator(t *testing.T) {
+	wrapper := NewWrapper()
+	if wrapper.urlValidator == nil {
+		t.Fatal("expected NewWrapper() to default urlValidator to DefaultURLValidator")
 	}
 }
 
