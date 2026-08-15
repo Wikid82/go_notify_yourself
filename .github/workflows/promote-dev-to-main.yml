@@ -1,0 +1,212 @@
+name: Promote development to main
+
+# Weekly PR development -> main, human-reviewed (unlike sync-development.yml's
+# direct development -> development push). Gated on CI having actually passed
+# for development's current HEAD, so a broken development doesn't get promoted just
+# because a week went by.
+
+on:
+  schedule:
+    - cron: '23 12 * * 1' # Mondays ~12:23 UTC, off the top of the hour
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: 'Why are you running this manually?'
+        required: true
+        default: 'Ad-hoc promotion request'
+      skip_health_check:
+        description: 'Skip the CI health check on development?'
+        required: false
+        type: boolean
+        default: false
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+env:
+  SOURCE_BRANCH: development
+  TARGET_BRANCH: main
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  check-development-health:
+    runs-on: ubuntu-latest
+    outputs:
+      is_healthy: ${{ steps.check.outputs.is_healthy }}
+      run_url: ${{ steps.check.outputs.run_url }}
+    steps:
+      - name: Check CI status on development HEAD
+        id: check
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
+        env:
+          SKIP: ${{ inputs.skip_health_check }}
+        with:
+          script: |
+            if (process.env.SKIP === 'true') {
+              core.info('Health check skipped by workflow_dispatch input');
+              core.setOutput('is_healthy', 'true');
+              core.setOutput('run_url', 'N/A - check skipped');
+              return;
+            }
+
+            const { data: branch } = await github.rest.repos.getBranch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              branch: 'development',
+            });
+            const headSha = branch.commit.sha;
+            core.info(`development HEAD: ${headSha}`);
+
+            // sync-development.yml never creates a new commit — development is always
+            // either untouched or fast-forwarded/reset to development's exact
+            // SHA. So a completed CI run on 'development' at this same SHA is
+            // equally valid proof of health, and covers two gaps in checking
+            // 'development' alone: (1) if development was synced with the GITHUB_TOKEN
+            // fallback (doesn't trigger downstream workflows), CI never ran on
+            // development at all; (2) if development already matched development when
+            // the sync ran, no push happened, so no development-branch run exists
+            // for this SHA even with a trigger token configured.
+            let run = null;
+            for (let attempt = 1; attempt <= 4; attempt += 1) {
+              const { data } = await github.rest.actions.listWorkflowRuns({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                workflow_id: 'ci.yml',
+                status: 'completed',
+                per_page: 20,
+              });
+              run = data.workflow_runs.find(
+                (r) => r.head_sha === headSha && (r.head_branch === 'development' || r.head_branch === 'development'),
+              );
+              if (run) break;
+              core.info(`No completed CI run for development HEAD yet (attempt ${attempt}/4), waiting...`);
+              await new Promise((resolve) => setTimeout(resolve, 15000));
+            }
+
+            if (!run) {
+              core.setOutput('is_healthy', 'false');
+              core.setOutput('run_url', `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/workflows/ci.yml`);
+              core.warning('No completed CI run found for development HEAD — blocking promotion');
+              return;
+            }
+
+            core.setOutput('is_healthy', run.conclusion === 'success' ? 'true' : 'false');
+            core.setOutput('run_url', run.html_url);
+            if (run.conclusion !== 'success') {
+              core.warning(`CI on development HEAD concluded '${run.conclusion}' — blocking promotion`);
+            }
+
+  create-promotion-pr:
+    needs: check-development-health
+    if: needs.check-development-health.outputs.is_healthy == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ env.TARGET_BRANCH }}
+          fetch-depth: 0
+
+      - name: Check for differences
+        id: diff
+        run: |
+          git fetch origin "${{ env.SOURCE_BRANCH }}"
+          AHEAD=$(git rev-list --count "origin/${{ env.TARGET_BRANCH }}..origin/${{ env.SOURCE_BRANCH }}")
+          echo "development is $AHEAD commits ahead of main"
+          echo "ahead=$AHEAD" >> "$GITHUB_OUTPUT"
+
+      - name: Generate commit summary
+        if: steps.diff.outputs.ahead != '0'
+        id: commits
+        run: |
+          {
+            echo "log<<COMMITS_EOF"
+            git log --oneline "origin/${{ env.TARGET_BRANCH }}..origin/${{ env.SOURCE_BRANCH }}" | head -50
+            echo "COMMITS_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Create or update promotion PR
+        if: steps.diff.outputs.ahead != '0'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
+        env:
+          COMMIT_LOG: ${{ steps.commits.outputs.log }}
+          TRIGGER_REASON: ${{ inputs.reason || 'Scheduled weekly promotion' }}
+          RUN_URL: ${{ needs.check-development-health.outputs.run_url }}
+        with:
+          script: |
+            const source = process.env.SOURCE_BRANCH || 'development';
+            const target = process.env.TARGET_BRANCH || 'main';
+
+            const { data: existing } = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              head: `${context.repo.owner}:development`,
+              base: 'main',
+            });
+
+            const date = new Date().toISOString().slice(0, 10);
+            const body = `## Promote development to main
+
+            **Date:** ${date}
+            **Trigger:** ${process.env.TRIGGER_REASON}
+            **CI on development HEAD:** ${process.env.RUN_URL}
+
+            ### Commits being promoted
+            \`\`\`
+            ${process.env.COMMIT_LOG}
+            \`\`\`
+
+            ## Merge instructions — important
+
+            **Use "Create a merge commit", not squash or rebase.** Squashing collapses every
+            \`feat:\`/\`fix:\` commit into one bullet-list body, which release-please can't parse —
+            version bumps and changelog entries silently stop working.
+
+            ---
+            _Opened automatically by [Promote development to main](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})._
+            `;
+
+            if (existing.length > 0) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existing[0].number,
+                body: `Nightly has moved on since this PR opened. New commits may be included.\n\n_Triggered by [this run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})._`,
+              });
+              core.info(`Updated existing PR #${existing[0].number}`);
+              return;
+            }
+
+            const pr = await github.rest.pulls.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `chore: promote development to main (${date})`,
+              head: 'development',
+              base: 'main',
+              body,
+            });
+            core.info(`Created PR #${pr.data.number}: ${pr.data.html_url}`);
+
+            for (const label of ['automated', 'promotion']) {
+              try {
+                await github.rest.issues.getLabel({ owner: context.repo.owner, repo: context.repo.repo, name: label });
+              } catch {
+                await github.rest.issues.createLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  name: label,
+                  color: label === 'automated' ? '0e8a16' : '5319e7',
+                });
+              }
+            }
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr.data.number,
+              labels: ['automated', 'promotion'],
+            });
