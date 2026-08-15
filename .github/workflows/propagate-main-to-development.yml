@@ -1,0 +1,94 @@
+name: Propagate main to development
+
+# For hotfixes/CI-generated commits pushed straight to main — opens a PR
+# carrying those changes down to development so they don't only exist on
+# main. Deliberately does NOT also target nightly: nightly picks up
+# anything development gets via sync-nightly.yml's daily sync, so a second
+# PR there would just be redundant.
+#
+# Also fires after a routine nightly -> main promotion merge, but that's a
+# no-op in practice: main's content after that merge already matches
+# development (it came from development via nightly), so the ahead-count
+# check below finds nothing to propagate and skips creating a PR.
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  propagate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: development
+          fetch-depth: 0
+
+      - name: Check for differences
+        id: diff
+        run: |
+          git fetch origin main development
+          AHEAD=$(git rev-list --count origin/development..origin/main)
+          echo "main is $AHEAD commits ahead of development"
+          echo "ahead=$AHEAD" >> "$GITHUB_OUTPUT"
+
+      - name: Create or update propagation PR
+        if: steps.diff.outputs.ahead != '0'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
+        with:
+          script: |
+            const { data: existing } = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              head: `${context.repo.owner}:main`,
+              base: 'development',
+            });
+
+            if (existing.length > 0) {
+              core.info(`Existing PR #${existing[0].number} already open for main -> development; leaving it as-is`);
+              return;
+            }
+
+            const pr = await github.rest.pulls.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: 'chore: propagate main into development',
+              head: 'main',
+              base: 'development',
+              body: [
+                'Automated PR carrying commits pushed directly to `main` (hotfixes, CI-generated',
+                'commits) down into `development`. nightly is intentionally skipped — it picks',
+                'these up via the daily development sync instead.',
+                '',
+                `Triggered by push ${context.sha} to main.`,
+              ].join('\n'),
+              draft: true,
+            });
+            core.info(`Created PR #${pr.data.number}: ${pr.data.html_url}`);
+
+            try {
+              await github.rest.issues.getLabel({ owner: context.repo.owner, repo: context.repo.repo, name: 'auto-propagate' });
+            } catch {
+              await github.rest.issues.createLabel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                name: 'auto-propagate',
+                color: '7dd3fc',
+              });
+            }
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr.data.number,
+              labels: ['auto-propagate'],
+            });
