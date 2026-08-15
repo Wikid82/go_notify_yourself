@@ -48,7 +48,9 @@ func newTestWrapper(rt *capturingRoundTripper) *transport.Wrapper {
 	)
 }
 
-const validWebhookURL = "https://hooks.slack.com/services/T00000000/B00000000/abcDEF1234567890abcdefgh"
+// Deliberately not shaped like a real Slack token (dashes, "FAKE" markers)
+// so it doesn't trip GitHub's secret-scanning push protection.
+const validWebhookURL = "https://hooks.slack.com/services/T-FAKE-TEST/B-FAKE-TEST/FAKE-NOT-A-REAL-SECRET"
 
 func TestValidateWebhookURL(t *testing.T) {
 	tests := []struct {
