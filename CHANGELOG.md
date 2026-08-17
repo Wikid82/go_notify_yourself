@@ -7,6 +7,13 @@ via [GoReleaser](https://goreleaser.com/) on every tagged release.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.2.1](https://github.com/Wikid82/go_notify_yourself/compare/v0.2.0...v0.2.1) (2026-08-17)
+
+
+### Bug Fixes
+
+* **release:** use go release-type for release-please ([8c6636b](https://github.com/Wikid82/go_notify_yourself/commit/8c6636b03c6aa1be50b2a2535d10379e90cc98ec))
+
 ## [Unreleased]
 
 ## [0.2.0] - 2026-08-17
