@@ -1,0 +1,71 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":semanticCommits",
+    ":separateMultipleMajorReleases",
+    "helpers:pinGitHubActionDigests"
+  ],
+  "baseBranchPatterns": ["development"],
+  "postUpdateOptions": ["npmDedupe"],
+  "skipInstalls": false,
+  "timezone": "America/New_York",
+  "dependencyDashboard": true,
+  "dependencyDashboardApproval": true,
+  "prConcurrentLimit": 10,
+  "prHourlyLimit": 0,
+  "labels": ["dependencies"],
+  "minimumReleaseAge": null,
+  "rebaseWhen": "auto",
+  "rangeStrategy": "bump",
+  "automerge": false,
+  "automergeType": "pr",
+  "platformAutomerge": true,
+  "vulnerabilityAlerts": {
+    "enabled": true,
+    "dependencyDashboardApproval": false,
+    "automerge": false,
+    "labels": ["security", "vulnerability"]
+  },
+  "packageRules": [
+    {
+      "description": "Group GitHub Actions non-major updates into one PR",
+      "matchManagers": ["github-actions"],
+      "matchUpdateTypes": ["minor", "patch", "pin", "digest"],
+      "groupName": "github-actions-non-major",
+      "groupSlug": "github-actions-non-major"
+    },
+    {
+      "description": "Group npm non-major updates into one PR",
+      "matchManagers": ["npm"],
+      "matchUpdateTypes": ["minor", "patch", "pin", "digest"],
+      "groupName": "npm-non-major",
+      "groupSlug": "npm-non-major"
+    },
+    {
+      "description": "Group Dockerfile base image non-major updates into one PR",
+      "matchManagers": ["dockerfile"],
+      "matchUpdateTypes": ["minor", "patch", "pin", "digest"],
+      "groupName": "dockerfile-non-major",
+      "groupSlug": "dockerfile-non-major"
+    },
+    {
+      "description": "Safety: keep major updates separate and require manual review",
+      "matchUpdateTypes": ["major"],
+      "automerge": false,
+      "labels": ["manual-review"]
+    },
+    {
+      "description": "Block typescript v7 — a from-scratch rewrite with no typescript-eslint support yet, which breaks `npm run lint` outright. Re-enable once https://github.com/typescript-eslint/typescript-eslint/issues/10940 ships. Non-major 6.x updates still flow through.",
+      "matchPackageNames": ["typescript"],
+      "matchUpdateTypes": ["major"],
+      "enabled": false
+    },
+    {
+      "description": "Block eslint v10 — changed the rule-context API (e.g. getFilename()) in a way eslint-config-next's bundled eslint-plugin-react doesn't support yet, which crashes `npm run lint`. Re-enable once eslint-config-next ships a compatible eslint-plugin-react. Non-major 9.x updates still flow through.",
+      "matchPackageNames": ["eslint"],
+      "matchUpdateTypes": ["major"],
+      "enabled": false
+    }
+  ]
+}
