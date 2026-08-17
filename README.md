@@ -102,6 +102,38 @@ Every HTTP-based provider's `Config.Template` selects the JSON payload shape: `"
 `"detailed"`, or `"custom"` (uses `Config.CustomTemplate`, a Go `text/template` string with a
 `toJSON` helper function available, e.g. `{{toJSON .Message}}`).
 
+## Provider registry
+
+Every provider package self-registers with a small, generic factory registry at the module root,
+mirroring the `database/sql` driver pattern: `notify.Register(name, factory)` is called from each
+package's `init()`, and `notify.New(name, config)` looks up and constructs a `Sender` by name at
+runtime — useful when the provider type is only known at runtime (e.g. loaded from a database row
+or config file), not hardcoded at compile time.
+
+```go
+import (
+	notify "github.com/Wikid82/go_notify_yourself"
+	_ "github.com/Wikid82/go_notify_yourself/providers/all" // registers all 8 built-in providers
+)
+
+wrapper := transport.NewWrapper()
+sender, err := notify.New("discord", map[string]any{
+	"transport":   wrapper,
+	"webhook_url": "https://discord.com/api/webhooks/123456789/abcDEF",
+})
+```
+
+`notify.RegisteredTypes()` returns the sorted list of provider names currently linked into your
+binary — handy for populating a UI dropdown or validating a config value against exactly what's
+compiled in, without hardcoding your own list.
+
+The registry is an **additive convenience/discovery layer**, not a replacement for the typed
+constructors — `discord.New(discord.Config{...}, wrapper)` remains the recommended path when you
+don't need runtime discovery, since it keeps full compile-time type safety. See
+[ARCHITECTURE.md](./ARCHITECTURE.md) for how to add a new provider to the registry, and
+[docs/INTEGRATION.md](./docs/INTEGRATION.md) for a full integration walkthrough into your own
+project.
+
 ## Transport: SSRF-safe dispatch with retries
 
 `transport.Wrapper` is the shared delivery primitive every HTTP-based provider package dispatches
