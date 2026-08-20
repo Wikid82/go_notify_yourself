@@ -2,3 +2,4 @@ coverage.out
 coverage.txt
 dist/
 *.test
+scripts/tempCodeRunnerFile.sh
