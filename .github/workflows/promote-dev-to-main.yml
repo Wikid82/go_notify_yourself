@@ -7,7 +7,7 @@ name: Promote development to main
 
 on:
   schedule:
-    - cron: '23 12 * * 1' # Mondays ~12:23 UTC, off the top of the hour
+    - cron: '45 12 * * 1' # Mondays ~12:45 UTC, off the top of the hour
   workflow_dispatch:
     inputs:
       reason:
