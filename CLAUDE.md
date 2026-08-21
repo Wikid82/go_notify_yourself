@@ -53,7 +53,7 @@ that's a sign the seam is wrong — stop and reconsider the interface instead.
 Scaled down from Charon's much larger surface because none of it applies to a small,
 dependency-free Go library with a single maintainer:
 
-- No CodeQL / Trivy / GORM security scans — no SQL, no web-facing surface of its own.
+- No Trivy / GORM security scans — no SQL, no web-facing surface of its own.
 - No Playwright / E2E — no frontend, no UI.
 - No Docker build — this ships as a Go module via `go get`, not a binary or image.
 - No multi-agent orchestration pipeline — for a repo this size, direct TDD implementation is the
@@ -64,6 +64,11 @@ dependency-free Go library with a single maintainer:
 
 - CI (`.github/workflows/ci.yml`): `go build`, `go vet`, `staticcheck`, `go test` + coverage gate,
   on every push/PR. Nothing heavier.
+- CodeQL (`.github/workflows/codeql.yml`): `go` only — this repo has no JS/TS source, so don't
+  re-add `javascript-typescript` to the matrix. Go setup points at the root `go.mod`/`go.sum`
+  (unlike Charon, there is no `backend/` subdirectory here). Findings gate logic lives in
+  `scripts/security/codeql-findings-gate.sh`; documented exceptions go in
+  `.github/codeql/codeql-suppressions.yml`.
 - Release: GoReleaser (`.goreleaser.yaml`), tag-triggered, changelog + GitHub release only — no
   binary/archive/Docker artifacts (this is a library, not a deployable).
 - Versioning: semver tags (`vX.Y.Z`), driven by Conventional Commits (`feat:`, `fix:`, `chore:`,
