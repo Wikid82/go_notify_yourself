@@ -94,16 +94,16 @@ jobs:
           echo '```' >>"$GITHUB_STEP_SUMMARY"
 
           # "0 findings" is indistinguishable from "extraction failed and
-          # nothing was scanned" by output alone — surface the latter
-          # loudly instead of letting it read as a clean pass. Known cause
-          # as of this writing: CodeQL's bundled Go extractor toolchain
-          # trails the go.mod `go` directive (see the setup-go step above).
-          if grep -rq "requires newer Go version" "${RUNNER_TEMP:-/tmp}/codeql_databases/${{ matrix.language }}"/{log,diagnostic} 2>/dev/null; then
-            {
-              echo "::warning::CodeQL Go extraction failed for one or more files (toolchain version mismatch) — the SARIF result count reflects partial or zero real coverage, not a clean scan."
-              echo "> ⚠️ **Extraction errors detected** — some or all source files failed CodeQL extraction due to a Go toolchain version mismatch. The findings above may not reflect real coverage. See the \`autobuild\` step log for \`requires newer Go version\` errors."
-            } >>"$GITHUB_STEP_SUMMARY"
-          fi
+          # nothing was scanned" by output alone, and CodeQL's bundled Go
+          # extractor is known to trail the go.mod `go` directive (see the
+          # setup-go step above) — an unconditional note beats a clever
+          # after-the-fact detector: this job has no reliable way to
+          # inspect the autobuild step's own log/annotations from a later
+          # step, so a conditional check here would just be a check that
+          # can silently never fire.
+          {
+            echo "_Before trusting a 0-finding result: check the \`autobuild\` step's log for \`requires newer Go version\` errors — if present, CodeQL scanned nothing and this is not a clean pass._"
+          } >>"$GITHUB_STEP_SUMMARY"
           echo "View full results in the [Security tab](https://github.com/${{ github.repository }}/security/code-scanning)" >>"$GITHUB_STEP_SUMMARY"
 
       - name: Enforce CodeQL findings gate

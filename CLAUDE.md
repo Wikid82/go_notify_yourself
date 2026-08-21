@@ -72,9 +72,9 @@ dependency-free Go library with a single maintainer:
   **Known gap (as of 2026-08-21):** CodeQL's bundled Go extractor trails the `go 1.27.0` directive
   in `go.mod`, so extraction fails for every file and the scan finds nothing real — the job still
   goes green because "0 findings" and "extraction failed" look identical unless you check for it.
-  The workflow itself now surfaces this as a `::warning::` + job-summary banner when it happens, so
-  check the CodeQL job summary, not just its pass/fail color, until GitHub ships a bundle whose Go
-  extractor supports 1.27.
+  The job summary now carries a permanent note pointing at the `autobuild` step's log (grep for
+  `requires newer Go version`) as the way to confirm real coverage for a given run — don't trust
+  the pass/fail color alone until GitHub ships a CodeQL bundle whose Go extractor supports 1.27.
 - Release: GoReleaser (`.goreleaser.yaml`), tag-triggered, changelog + GitHub release only — no
   binary/archive/Docker artifacts (this is a library, not a deployable).
 - Versioning: semver tags (`vX.Y.Z`), driven by Conventional Commits (`feat:`, `fix:`, `chore:`,
