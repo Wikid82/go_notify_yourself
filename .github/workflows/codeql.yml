@@ -1,0 +1,102 @@
+name: CodeQL
+
+on:
+  push:
+    branches: [main, development, nightly, 'feature/**']
+  pull_request:
+    branches: [main, development, nightly]
+  schedule:
+    - cron: '30 3 * * 1' # Mondays ~03:30 UTC, off the top of the hour
+  workflow_dispatch:
+
+concurrency:
+  # PRs: cancel the scan for superseded commits on the same PR (the old
+  # code no longer matters). Pushes: key on the commit SHA, not the branch
+  # name — otherwise a second push to the same branch before CodeQL
+  # finishes cancels the first commit's scan and leaves it with a
+  # permanently cancelled/red check instead of a result.
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.head_ref || github.sha }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  analyze:
+    name: CodeQL analysis (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [go, javascript-typescript]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - if: matrix.language == 'go'
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+
+      - uses: github/codeql-action/init@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd # v4
+        with:
+          languages: ${{ matrix.language }}
+          queries: security-and-quality
+
+      - uses: github/codeql-action/autobuild@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd # v4
+
+      - id: codeql_analyze
+        uses: github/codeql-action/analyze@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd # v4
+        with:
+          category: "/language:${{ matrix.language }}"
+          output: sarif-results/${{ matrix.language }}
+
+      # Report-only — see the blocking step below. Every CodeQL result
+      # blocks by default unless suppressed (in-source `codeql[rule-id]`
+      # comment, or a matching non-expired entry in
+      # .github/codeql/codeql-suppressions.yml); this step never fails the
+      # job itself, it just surfaces the gate's verdict in the job summary.
+      - name: Report CodeQL findings gate
+        if: always() && steps.codeql_analyze.conclusion != 'skipped'
+        run: |
+          set -euo pipefail
+          SARIF_DIR="sarif-results/${{ matrix.language }}"
+          SARIF_FILE="$(find "$SARIF_DIR" -maxdepth 1 -type f -name '*.sarif' | head -n 1 || true)"
+
+          {
+            echo "## CodeQL findings gate — ${{ matrix.language }}"
+            echo '```'
+          } >>"$GITHUB_STEP_SUMMARY"
+
+          if [ -z "$SARIF_FILE" ] || [ ! -r "$SARIF_FILE" ]; then
+            echo "ERROR: expected SARIF file missing or unreadable under $SARIF_DIR" | tee -a "$GITHUB_STEP_SUMMARY"
+            echo '```' >>"$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          set +e
+          bash scripts/security/codeql-findings-gate.sh "$SARIF_FILE" "${{ matrix.language }}" | tee -a "$GITHUB_STEP_SUMMARY"
+          set -e
+          echo '```' >>"$GITHUB_STEP_SUMMARY"
+          echo "View full results in the [Security tab](https://github.com/${{ github.repository }}/security/code-scanning)" >>"$GITHUB_STEP_SUMMARY"
+
+      - name: Enforce CodeQL findings gate
+        if: always() && steps.codeql_analyze.conclusion != 'skipped'
+        run: |
+          set -euo pipefail
+          SARIF_DIR="sarif-results/${{ matrix.language }}"
+          SARIF_FILE="$(find "$SARIF_DIR" -maxdepth 1 -type f -name '*.sarif' | head -n 1 || true)"
+
+          if [ -z "$SARIF_FILE" ] || [ ! -r "$SARIF_FILE" ]; then
+            echo "::error::Expected SARIF file is missing or unreadable under $SARIF_DIR"
+            exit 1
+          fi
+
+          if ! bash scripts/security/codeql-findings-gate.sh "$SARIF_FILE" "${{ matrix.language }}" >/dev/null; then
+            echo "::error::CodeQL found blocking findings. Fix before merging, or add a documented exception in .github/codeql/codeql-suppressions.yml (see that file's header for the policy)."
+            exit 1
+          fi
