@@ -37,6 +37,16 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
+      # KNOWN GAP: as of CodeQL CLI 2.26.3, the bundled Go extractor is
+      # built with go1.26.5. go.mod declares `go 1.27.0`, so every source
+      # file fails extraction ("package requires newer Go version go1.27
+      # (application built with go1.26)") and the scan silently produces
+      # zero results — the job still goes green because "0 findings" and
+      # "CodeQL scanned nothing" look identical from the gate's output.
+      # This is a temporary upstream lag (CodeQL's Go extractor toolchain
+      # trailing the latest Go release), not a config bug here. Once
+      # GitHub ships a CodeQL bundle whose Go extractor supports 1.27,
+      # this comment (and the two below) can be deleted.
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with:
           go-version-file: go.mod
@@ -82,6 +92,18 @@ jobs:
           bash scripts/security/codeql-findings-gate.sh "$SARIF_FILE" "${{ matrix.language }}" | tee -a "$GITHUB_STEP_SUMMARY"
           set -e
           echo '```' >>"$GITHUB_STEP_SUMMARY"
+
+          # "0 findings" is indistinguishable from "extraction failed and
+          # nothing was scanned" by output alone — surface the latter
+          # loudly instead of letting it read as a clean pass. Known cause
+          # as of this writing: CodeQL's bundled Go extractor toolchain
+          # trails the go.mod `go` directive (see the setup-go step above).
+          if grep -rq "requires newer Go version" "${RUNNER_TEMP:-/tmp}/codeql_databases/${{ matrix.language }}"/{log,diagnostic} 2>/dev/null; then
+            {
+              echo "::warning::CodeQL Go extraction failed for one or more files (toolchain version mismatch) — the SARIF result count reflects partial or zero real coverage, not a clean scan."
+              echo "> ⚠️ **Extraction errors detected** — some or all source files failed CodeQL extraction due to a Go toolchain version mismatch. The findings above may not reflect real coverage. See the \`autobuild\` step log for \`requires newer Go version\` errors."
+            } >>"$GITHUB_STEP_SUMMARY"
+          fi
           echo "View full results in the [Security tab](https://github.com/${{ github.repository }}/security/code-scanning)" >>"$GITHUB_STEP_SUMMARY"
 
       - name: Enforce CodeQL findings gate

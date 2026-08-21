@@ -69,6 +69,12 @@ dependency-free Go library with a single maintainer:
   (unlike Charon, there is no `backend/` subdirectory here). Findings gate logic lives in
   `scripts/security/codeql-findings-gate.sh`; documented exceptions go in
   `.github/codeql/codeql-suppressions.yml`.
+  **Known gap (as of 2026-08-21):** CodeQL's bundled Go extractor trails the `go 1.27.0` directive
+  in `go.mod`, so extraction fails for every file and the scan finds nothing real — the job still
+  goes green because "0 findings" and "extraction failed" look identical unless you check for it.
+  The workflow itself now surfaces this as a `::warning::` + job-summary banner when it happens, so
+  check the CodeQL job summary, not just its pass/fail color, until GitHub ships a bundle whose Go
+  extractor supports 1.27.
 - Release: GoReleaser (`.goreleaser.yaml`), tag-triggered, changelog + GitHub release only — no
   binary/archive/Docker artifacts (this is a library, not a deployable).
 - Versioning: semver tags (`vX.Y.Z`), driven by Conventional Commits (`feat:`, `fix:`, `chore:`,
