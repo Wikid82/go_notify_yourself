@@ -7,6 +7,15 @@ via [GoReleaser](https://goreleaser.com/) on every tagged release.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.2.2](https://github.com/Wikid82/go_notify_yourself/compare/v0.2.1...v0.2.2) (2026-09-10)
+
+
+### Bug Fixes
+
+* always reinstall staticcheck/govulncheck after toolchain bump ([937d855](https://github.com/Wikid82/go_notify_yourself/commit/937d8556e03e91cb5694c7ee7daa00df8d9e25ef))
+* **ci:** drop broken CodeQL extraction-failure detector, note gap plainly ([905bbb6](https://github.com/Wikid82/go_notify_yourself/commit/905bbb669766d64cdf8f7b522b0ce78b288a3225))
+* **ci:** repair CodeQL workflow for this repo's flat Go layout ([210cb5d](https://github.com/Wikid82/go_notify_yourself/commit/210cb5d25b98e6cc97fe6bac5d63547b86506df6))
+
 ## [0.2.1](https://github.com/Wikid82/go_notify_yourself/compare/v0.2.0...v0.2.1) (2026-08-17)
 
 
