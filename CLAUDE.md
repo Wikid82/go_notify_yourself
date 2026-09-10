@@ -85,6 +85,13 @@ dependency-free Go library with a single maintainer:
 Same as Charon: `feat:`, `fix:`, `chore:`, `refactor:`, `docs:` prefixes. One logical change per
 commit; each commit should build and pass tests on its own (bisectable).
 
+Dependency bumps use `deps:` (Renovate emits this automatically —
+`.github/renovate.json` → `semanticCommitType: deps`). `deps:` is a release-triggering
+prefix for release-please, so a bumped transitive dep cuts a patch release and reaches
+downstream consumers — that's the intent. GitHub Actions bumps stay `chore:` (CI-only,
+non-releasable). Only `feat:`, `fix:`, `perf:`, `deps:`, and breaking changes trigger a
+release; `chore:` / `ci:` / `docs:` do not.
+
 ## Source of Truth for Scope
 
 `docs/plans/notifications_extraction_spec.md` in the Charon repo (`/projects/Charon`) is the
