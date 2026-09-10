@@ -1,0 +1,25 @@
+# ============================================================================
+# codeql-suppressions.yml
+#
+# Documented exceptions to the CodeQL findings gate
+# (scripts/security/codeql-findings-gate.sh), consumed by
+# .github/workflows/codeql.yml.
+#
+# Policy: every CodeQL result blocks the build by default, regardless of
+# severity, unless it is suppressed either natively in-source (a
+# `codeql[rule-id]` comment on the flagged line) or via an entry below.
+# Prefer the in-source suppression when the false positive is local and
+# self-explanatory; use this file when the justification needs more room,
+# or spans a line range.
+#
+# Entry format:
+#   - rule_id: <CodeQL rule id, e.g. go/request-forgery>
+#     path: <repo-root-relative file path>
+#     line: <line number>            # or: line_range: {start: N, end: M}
+#     reason: <why this is a false positive / accepted risk>
+#     review_by: <YYYY-MM-DD>        # entry is treated as blocking again
+#                                     # after this date — renew or fix
+#
+# No exceptions are currently on file.
+# ============================================================================
+suppressions: []

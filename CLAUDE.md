@@ -53,7 +53,7 @@ that's a sign the seam is wrong — stop and reconsider the interface instead.
 Scaled down from Charon's much larger surface because none of it applies to a small,
 dependency-free Go library with a single maintainer:
 
-- No CodeQL / Trivy / GORM security scans — no SQL, no web-facing surface of its own.
+- No Trivy / GORM security scans — no SQL, no web-facing surface of its own.
 - No Playwright / E2E — no frontend, no UI.
 - No Docker build — this ships as a Go module via `go get`, not a binary or image.
 - No multi-agent orchestration pipeline — for a repo this size, direct TDD implementation is the
@@ -64,6 +64,17 @@ dependency-free Go library with a single maintainer:
 
 - CI (`.github/workflows/ci.yml`): `go build`, `go vet`, `staticcheck`, `go test` + coverage gate,
   on every push/PR. Nothing heavier.
+- CodeQL (`.github/workflows/codeql.yml`): `go` only — this repo has no JS/TS source, so don't
+  re-add `javascript-typescript` to the matrix. Go setup points at the root `go.mod`/`go.sum`
+  (unlike Charon, there is no `backend/` subdirectory here). Findings gate logic lives in
+  `scripts/security/codeql-findings-gate.sh`; documented exceptions go in
+  `.github/codeql/codeql-suppressions.yml`.
+  **Known gap (as of 2026-08-21):** CodeQL's bundled Go extractor trails the `go 1.27.0` directive
+  in `go.mod`, so extraction fails for every file and the scan finds nothing real — the job still
+  goes green because "0 findings" and "extraction failed" look identical unless you check for it.
+  The job summary now carries a permanent note pointing at the `autobuild` step's log (grep for
+  `requires newer Go version`) as the way to confirm real coverage for a given run — don't trust
+  the pass/fail color alone until GitHub ships a CodeQL bundle whose Go extractor supports 1.27.
 - Release: GoReleaser (`.goreleaser.yaml`), tag-triggered, changelog + GitHub release only — no
   binary/archive/Docker artifacts (this is a library, not a deployable).
 - Versioning: semver tags (`vX.Y.Z`), driven by Conventional Commits (`feat:`, `fix:`, `chore:`,
@@ -73,6 +84,13 @@ dependency-free Go library with a single maintainer:
 
 Same as Charon: `feat:`, `fix:`, `chore:`, `refactor:`, `docs:` prefixes. One logical change per
 commit; each commit should build and pass tests on its own (bisectable).
+
+Dependency bumps use `deps:` (Renovate emits this automatically —
+`.github/renovate.json` → `semanticCommitType: deps`). `deps:` is a release-triggering
+prefix for release-please, so a bumped transitive dep cuts a patch release and reaches
+downstream consumers — that's the intent. GitHub Actions bumps stay `chore:` (CI-only,
+non-releasable). Only `feat:`, `fix:`, `perf:`, `deps:`, and breaking changes trigger a
+release; `chore:` / `ci:` / `docs:` do not.
 
 ## Source of Truth for Scope
 
