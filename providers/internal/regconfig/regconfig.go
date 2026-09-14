@@ -29,6 +29,31 @@ func StringField(config map[string]any, key string) string {
 	return s
 }
 
+// IntField returns config[key] as an int, or 0 if the key is absent or not
+// an int-like value. Accepts int and int64 (the natural Go-side shapes)
+// and float64 (the shape a generic JSON-style decode into map[string]any
+// produces, since encoding/json decodes every JSON number as float64) —
+// mirroring StringSliceField's existing dual-shape acceptance for []any.
+func IntField(config map[string]any, key string) int {
+	if config == nil {
+		return 0
+	}
+	v, ok := config[key]
+	if !ok {
+		return 0
+	}
+	switch n := v.(type) {
+	case int:
+		return n
+	case int64:
+		return int(n)
+	case float64:
+		return int(n)
+	default:
+		return 0
+	}
+}
+
 // StringSliceField returns config[key] as a []string, or nil if the key is
 // absent or not a recognized slice-of-string shape. Both []string (the
 // natural Go-side shape) and []any of strings (the natural shape after a
