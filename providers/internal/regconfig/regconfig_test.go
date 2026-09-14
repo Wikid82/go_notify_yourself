@@ -29,6 +29,30 @@ func TestStringField(t *testing.T) {
 	}
 }
 
+func TestIntField(t *testing.T) {
+	tests := []struct {
+		name   string
+		config map[string]any
+		key    string
+		want   int
+	}{
+		{"nil config", nil, "ttl", 0},
+		{"missing key", map[string]any{}, "ttl", 0},
+		{"wrong type string", map[string]any{"ttl": "60"}, "ttl", 0},
+		{"present int", map[string]any{"ttl": 60}, "ttl", 60},
+		{"present int64", map[string]any{"ttl": int64(120)}, "ttl", 120},
+		{"present float64 (JSON-decode shape)", map[string]any{"ttl": float64(180)}, "ttl", 180},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := IntField(tt.config, tt.key)
+			if got != tt.want {
+				t.Errorf("IntField(%v, %q) = %d, want %d", tt.config, tt.key, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestStringSliceField(t *testing.T) {
 	tests := []struct {
 		name   string

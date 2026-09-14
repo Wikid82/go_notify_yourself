@@ -23,8 +23,8 @@ re-implementing the same things badly.
 
 - SSRF-safe outbound HTTP dispatch with retry/backoff (`transport.Wrapper`) — destination
   validation, redirect re-validation, request/response size caps.
-- A uniform `Sender` interface across eight built-in provider types: Discord, Slack, Gotify,
-  Pushover, Ntfy, Telegram, generic webhook, and email.
+- A uniform `Sender` interface across nine built-in provider types: Discord, Slack, Gotify,
+  Pushover, Ntfy, Telegram, generic webhook, email, and direct browser Web Push.
 - JSON payload templating with a shared `text/template` engine plus a `toJSON` helper.
 - A self-registering factory/discovery layer (`notify.Register`/`notify.New`/
   `notify.RegisteredTypes`) for constructing a `Sender` by name at runtime.
@@ -41,7 +41,7 @@ re-implementing the same things badly.
 **Reach for it if:**
 
 - You need two or more of {Discord, Slack, Gotify, Pushover, Ntfy, Telegram, generic webhook,
-  email} dispatch.
+  email, webpush} dispatch.
 - You want retry/backoff and SSRF hardening without writing it yourself.
 - You're fine supplying your own HTTP client factory / SSRF policy / SMTP mailer via the module's
   dependency-injection seams (see "Why it's built this way" below).
@@ -161,6 +161,39 @@ you don't need runtime discovery:
 ```go
 sender := discord.New(discord.Config{WebhookURL: "https://discord.com/api/webhooks/..."}, wrapper)
 ```
+
+`providers/webpush` (direct browser Web Push — no relay) follows the same typed-constructor shape,
+but its `Config` mixes your application's VAPID identity (shared) with one subscriber's
+`PushSubscription` destination (per-recipient) — see one `webpush.New` call per subscriber, reusing
+the same `VAPIDPublicKey`/`VAPIDPrivateKey`/`VAPIDSubject` across all of them, to fan a single
+`notify.Message` out to every subscriber your application has collected:
+
+```go
+for _, sub := range subscriptions { // e.g. loaded from your own storage
+	sender := webpush.New(webpush.Config{
+		VAPIDPublicKey:  vapidPublicKey,  // same for every subscriber
+		VAPIDPrivateKey: vapidPrivateKey, // same for every subscriber
+		VAPIDSubject:    "mailto:ops@example.com",
+		Endpoint:        sub.Endpoint,
+		P256dh:          sub.P256dh,
+		Auth:            sub.Auth,
+	}, wrapper)
+	if err := sender.Send(ctx, msg); err != nil {
+		// Log the endpoint's host, not the full endpoint: for push services like
+		// FCM, sub.Endpoint's path commonly embeds a bearer-token-equivalent
+		// segment that shouldn't end up in your logs.
+		host := "unknown"
+		if u, parseErr := neturl.Parse(sub.Endpoint); parseErr == nil {
+			host = u.Host
+		}
+		log.Printf("webpush to %s failed: %v", host, err)
+	}
+}
+```
+
+`webpush.GenerateVAPIDKeyPair()` generates `VAPIDPublicKey`/`VAPIDPrivateKey` once at application
+setup time; persist the result yourself (rotating it invalidates every subscription already
+collected, since the browser binds each subscription to the exact public key it was created with).
 
 **5. Dispatch a message:**
 

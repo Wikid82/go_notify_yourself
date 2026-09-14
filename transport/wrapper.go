@@ -335,11 +335,15 @@ func hasDisallowedQueryAuthKey(query neturl.Values) bool {
 
 func sanitizeOutboundHeaders(headers map[string]string) map[string]string {
 	allowed := map[string]struct{}{
-		"content-type":  {},
-		"user-agent":    {},
-		"x-request-id":  {},
-		"x-gotify-key":  {},
-		"authorization": {},
+		"content-type":     {},
+		"user-agent":       {},
+		"x-request-id":     {},
+		"x-gotify-key":     {},
+		"authorization":    {},
+		"content-encoding": {},
+		"ttl":              {},
+		"urgency":          {},
+		"topic":            {},
 	}
 
 	sanitized := make(map[string]string)

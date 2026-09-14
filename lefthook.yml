@@ -1,0 +1,90 @@
+# lefthook.yml
+# Scaled down from Charon's lefthook.yml (/projects/Charon/lefthook.yml) for a small,
+# dependency-free Go library — no frontend, no Docker, no GORM/Trivy/semgrep/gitleaks surface.
+#
+# INSTALL:  lefthook install
+# MANUAL PIPELINES:
+#   lefthook run testing
+#
+# TOOL REQUIREMENTS: shellcheck, actionlint (staticcheck is auto-installed by its wrapper
+# script below if missing). All hook scripts live in scripts/pre-commit-hooks/.
+
+# ============================================================
+# PRE-COMMIT  (blocking, runs on every commit)
+# ============================================================
+pre-commit:
+  parallel: true
+  commands:
+
+    # --- File hygiene ---
+    end-of-file-fixer:
+      glob: "*.{go,yaml,yml,sh,md}"
+      run: |
+        modified=0
+        for file in {staged_files}; do
+          [ -f "$file" ] && [ -s "$file" ] && \
+            [ -n "$(tail -c1 "$file")" ] && echo >> "$file" && modified=1
+        done
+        if [ "$modified" -eq 1 ]; then
+          echo "end-of-file-fixer: files modified — review the changes, 'git add' what you want included, and commit again."
+          exit 1
+        fi
+
+    trailing-whitespace:
+      glob: "*.{go,yaml,yml,sh,md}"
+      run: |
+        modified=0
+        for file in {staged_files}; do
+          if grep -qP '\s+$' "$file" 2>/dev/null; then
+            sed -i 's/[[:space:]]*$//' "$file" && modified=1
+          fi
+        done
+        if [ "$modified" -eq 1 ]; then
+          echo "trailing-whitespace: trailing spaces removed — review the changes, 'git add' what you want included, and commit again."
+          exit 1
+        fi
+
+    check-yaml:
+      glob: "*.{yaml,yml}"
+      run: python3 -c "import sys,yaml; [yaml.safe_load(open(f)) for f in sys.argv[1:]]" {staged_files}
+
+    # --- Blocking guards ---
+    check-lfs-large-files:
+      run: bash scripts/pre-commit-hooks/check-lfs-for-large-files.sh
+
+    block-codeql-db:
+      run: bash scripts/pre-commit-hooks/block-codeql-db-commits.sh
+
+    # --- Shell / Actions ---
+    shellcheck:
+      glob: "*.sh"
+      run: shellcheck --severity=error {staged_files}
+
+    actionlint:
+      glob: ".github/workflows/*.{yaml,yml}"
+      run: actionlint {staged_files}
+
+    # --- Go (matches CLAUDE.md's "go vet + staticcheck must be clean" rule) ---
+    go-vet:
+      glob: "*.go"
+      run: go vet ./...
+
+    staticcheck:
+      glob: "*.go"
+      run: bash scripts/pre-commit-hooks/staticcheck.sh
+
+
+# ============================================================
+# MANUAL: testing
+# Run with: lefthook run testing
+# ============================================================
+testing:
+  parallel: true
+  commands:
+    go-test-coverage:
+      glob: "*.go"
+      run: bash scripts/test-coverage.sh
+
+    go-test-integration:
+      glob: "*.go"
+      run: go test -tags=integration ./...

@@ -17,8 +17,8 @@ It has four layers:
    HTTP-based provider dispatches through: destination validation, retry/backoff, redirect
    re-validation, and request/response size caps.
 3. **`providers/*`** — one package per notification service (`discord`, `slack`, `gotify`,
-   `pushover`, `ntfy`, `telegram`, `webhook`, `email`), each exposing a typed `Config` struct, a
-   `New(...)` constructor, and a `Client` implementing `notify.Sender`.
+   `pushover`, `ntfy`, `telegram`, `webhook`, `email`, `webpush`), each exposing a typed `Config`
+   struct, a `New(...)` constructor, and a `Client` implementing `notify.Sender`.
 4. **`providers/all`** — a blank-import bundle that registers every built-in provider package with
    the root registry in one line, for consumers who want zero-touch discovery.
 
@@ -88,6 +88,11 @@ providers/<name>/
   all, because email doesn't dispatch a JSON payload — it composes an HTML body via a host-supplied
   `TemplateRenderer` instead. Don't force every provider into the HTTP-shaped `Config` convention;
   follow what the provider's transport actually needs.
+- `webpush` is the first provider whose `Config` mixes two conceptually distinct field groups in one
+  flat struct: application-wide VAPID identity (shared across every subscription) and one
+  subscriber's `PushSubscription` destination (per-recipient). It's still one flat exported struct
+  fed through the same `New(cfg, w)` constructor shape as every other provider — flagged here only
+  so a future reader doesn't assume every `Config` field is per-recipient.
 
 ### 3.3 The `New` constructor convention
 
@@ -184,7 +189,7 @@ preventing an easy, avoidable one.
 
 ### 3.8 Test expectations
 
-Every provider package's tests should cover, mirroring the existing eight providers' patterns:
+Every provider package's tests should cover, mirroring the existing nine providers' patterns:
 
 - **Table-driven `Send` tests** against a fake `transport.Wrapper`, built via an injected
   `ClientFactory` returning a `capturingRoundTripper` (see any `providers/*/*_test.go` for the
