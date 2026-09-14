@@ -97,6 +97,7 @@ module has no opinion on your event vocabulary.
 | `providers/telegram` | `BotToken`, `ChatID`, `BaseURL` (optional override) | Bot token is embedded in the dispatch URL path per Telegram's own API convention; injects `chat_id`. |
 | `providers/webhook` | `URL` | Generic/custom JSON dispatch — no destination allowlist, no payload field requirements. Also exposes `RenderPreview` for validating a custom template without dispatching. |
 | `providers/email` | see below | The one provider not built on `transport.Wrapper` — see [Email](#email). |
+| `providers/webpush` | `VAPIDPublicKey`, `VAPIDPrivateKey`, `VAPIDSubject`, `Endpoint`, `P256dh`, `Auth`, `TTL` (optional), `Urgency`/`Topic` (optional) | Direct browser Web Push delivery (RFC 8030/8291/8292) — no third-party relay. Encrypts the payload per RFC 8291 (`aes128gcm`) and signs an RFC 8292 VAPID JWT per request; no `Config.Message` field requirement, since the payload shape is entirely up to the receiving service worker. |
 
 Every HTTP-based provider's `Config.Template` selects the JSON payload shape: `"minimal"` (default),
 `"detailed"`, or `"custom"` (uses `Config.CustomTemplate`, a Go `text/template` string with a
@@ -113,7 +114,7 @@ or config file), not hardcoded at compile time.
 ```go
 import (
 	notify "github.com/Wikid82/go_notify_yourself"
-	_ "github.com/Wikid82/go_notify_yourself/providers/all" // registers all 8 built-in providers
+	_ "github.com/Wikid82/go_notify_yourself/providers/all" // registers all 9 built-in providers
 )
 
 wrapper := transport.NewWrapper()
@@ -219,11 +220,15 @@ server. See any `providers/*/*_test.go` file in this repo for the pattern.
 ## Project status
 
 Extracted from [Charon](https://github.com/Wikid82/charon)'s internal notification engine. The
-provider list is intentionally exactly these seven HTTP providers plus email — see
-`docs/plans/notifications_extraction_spec.md` in Charon's repo for the extraction design brief.
-Long-term direction is an [Apprise](https://github.com/caronc/apprise)-style common interface over a
-larger provider catalog; the `Sender` interface and per-package structure here are deliberately
-shaped so that's additive later, not a breaking rework.
+original provider list was intentionally exactly the seven HTTP providers plus email ported from
+Charon — see `docs/plans/notifications_extraction_spec.md` in Charon's repo for the extraction
+design brief. `providers/webpush` (issue #14) is the one deliberate, maintainer-approved exception
+to "no new providers without an explicit ask": it's a genuinely different delivery mechanism (direct
+browser push, not a relay) with no Apprise equivalent, not a straight port — see
+`docs/plans/current_spec.md` for its own design brief. Long-term direction is an
+[Apprise](https://github.com/caronc/apprise)-style common interface over a larger provider catalog;
+the `Sender` interface and per-package structure here are deliberately shaped so that's additive
+later, not a breaking rework.
 
 ## License
 

@@ -88,6 +88,11 @@ providers/<name>/
   all, because email doesn't dispatch a JSON payload — it composes an HTML body via a host-supplied
   `TemplateRenderer` instead. Don't force every provider into the HTTP-shaped `Config` convention;
   follow what the provider's transport actually needs.
+- `webpush` is the first provider whose `Config` mixes two conceptually distinct field groups in one
+  flat struct: application-wide VAPID identity (shared across every subscription) and one
+  subscriber's `PushSubscription` destination (per-recipient). It's still one flat exported struct
+  fed through the same `New(cfg, w)` constructor shape as every other provider — flagged here only
+  so a future reader doesn't assume every `Config` field is per-recipient.
 
 ### 3.3 The `New` constructor convention
 

@@ -162,6 +162,32 @@ you don't need runtime discovery:
 sender := discord.New(discord.Config{WebhookURL: "https://discord.com/api/webhooks/..."}, wrapper)
 ```
 
+`providers/webpush` (direct browser Web Push — no relay) follows the same typed-constructor shape,
+but its `Config` mixes your application's VAPID identity (shared) with one subscriber's
+`PushSubscription` destination (per-recipient) — see one `webpush.New` call per subscriber, reusing
+the same `VAPIDPublicKey`/`VAPIDPrivateKey`/`VAPIDSubject` across all of them, to fan a single
+`notify.Message` out to every subscriber your application has collected:
+
+```go
+for _, sub := range subscriptions { // e.g. loaded from your own storage
+	sender := webpush.New(webpush.Config{
+		VAPIDPublicKey:  vapidPublicKey,  // same for every subscriber
+		VAPIDPrivateKey: vapidPrivateKey, // same for every subscriber
+		VAPIDSubject:    "mailto:ops@example.com",
+		Endpoint:        sub.Endpoint,
+		P256dh:          sub.P256dh,
+		Auth:            sub.Auth,
+	}, wrapper)
+	if err := sender.Send(ctx, msg); err != nil {
+		log.Printf("webpush to %s failed: %v", sub.Endpoint, err)
+	}
+}
+```
+
+`webpush.GenerateVAPIDKeyPair()` generates `VAPIDPublicKey`/`VAPIDPrivateKey` once at application
+setup time; persist the result yourself (rotating it invalidates every subscription already
+collected, since the browser binds each subscription to the exact public key it was created with).
+
 **5. Dispatch a message:**
 
 ```go
