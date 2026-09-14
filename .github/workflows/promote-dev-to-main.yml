@@ -31,6 +31,7 @@ env:
 permissions:
   contents: read
   pull-requests: write
+  actions: write
 
 jobs:
   check-development-health:
@@ -61,17 +62,12 @@ jobs:
             const headSha = branch.commit.sha;
             core.info(`development HEAD: ${headSha}`);
 
-            // sync-development.yml never creates a new commit — development is always
-            // either untouched or fast-forwarded/reset to development's exact
-            // SHA. So a completed CI run on 'development' at this same SHA is
-            // equally valid proof of health, and covers two gaps in checking
-            // 'development' alone: (1) if development was synced with the GITHUB_TOKEN
-            // fallback (doesn't trigger downstream workflows), CI never ran on
-            // development at all; (2) if development already matched development when
-            // the sync ran, no push happened, so no development-branch run exists
-            // for this SHA even with a trigger token configured.
-            let run = null;
-            for (let attempt = 1; attempt <= 4; attempt += 1) {
+            // ci.yml only triggers on push/PR to main, so a plain push to development
+            // (including sync-development.yml's fast-forward/reset) never produces a
+            // CI run on its own. Rather than blocking promotion on a run that will
+            // never show up, dispatch one against development explicitly and wait
+            // for it to finish.
+            async function findCompletedRun(since) {
               const { data } = await github.rest.actions.listWorkflowRuns({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
@@ -79,18 +75,37 @@ jobs:
                 status: 'completed',
                 per_page: 20,
               });
-              run = data.workflow_runs.find(
-                (r) => r.head_sha === headSha && (r.head_branch === 'development' || r.head_branch === 'development'),
+              return data.workflow_runs.find(
+                (r) => r.head_sha === headSha && (!since || new Date(r.created_at) >= since),
               );
-              if (run) break;
-              core.info(`No completed CI run for development HEAD yet (attempt ${attempt}/4), waiting...`);
-              await new Promise((resolve) => setTimeout(resolve, 15000));
+            }
+
+            let run = await findCompletedRun();
+
+            if (!run) {
+              core.info('No completed CI run for development HEAD — triggering one via workflow_dispatch');
+              const dispatchTime = new Date(Date.now() - 5000); // small buffer for clock skew
+              await github.rest.actions.createWorkflowDispatch({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                workflow_id: 'ci.yml',
+                ref: 'development',
+              });
+
+              const POLL_INTERVAL_MS = 20000;
+              const MAX_ATTEMPTS = 30; // ~10 minutes
+              for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
+                await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
+                run = await findCompletedRun(dispatchTime);
+                if (run) break;
+                core.info(`Waiting for triggered CI run to complete (attempt ${attempt}/${MAX_ATTEMPTS})...`);
+              }
             }
 
             if (!run) {
               core.setOutput('is_healthy', 'false');
               core.setOutput('run_url', `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/workflows/ci.yml`);
-              core.warning('No completed CI run found for development HEAD — blocking promotion');
+              core.warning('Triggered CI run for development HEAD did not complete in time — blocking promotion');
               return;
             }
 
