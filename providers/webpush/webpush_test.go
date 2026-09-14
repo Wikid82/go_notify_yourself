@@ -199,6 +199,30 @@ func TestClientSend_RejectsMismatchedVAPIDKeyPair(t *testing.T) {
 	}
 }
 
+func TestClientSend_RejectsMalformedVAPIDPrivateKeyBase64(t *testing.T) {
+	cfg := validConfig(t)
+	cfg.VAPIDPrivateKey = "not valid base64!!!"
+	rt := &capturingRoundTripper{}
+	client := New(cfg, newTestWrapper(rt))
+
+	err := client.Send(context.Background(), notify.Message{Body: "x"})
+	if err == nil || !strings.Contains(err.Error(), "VAPID private key") {
+		t.Fatalf("expected VAPID private key decode error, got: %v", err)
+	}
+}
+
+func TestClientSend_RejectsMalformedVAPIDPublicKeyBase64(t *testing.T) {
+	cfg := validConfig(t)
+	cfg.VAPIDPublicKey = "not valid base64!!!"
+	rt := &capturingRoundTripper{}
+	client := New(cfg, newTestWrapper(rt))
+
+	err := client.Send(context.Background(), notify.Message{Body: "x"})
+	if err == nil || !strings.Contains(err.Error(), "VAPID public key") {
+		t.Fatalf("expected VAPID public key decode error, got: %v", err)
+	}
+}
+
 func TestClientSend_RejectsInvalidUrgency(t *testing.T) {
 	cfg := validConfig(t)
 	cfg.Urgency = "extremely-urgent"

@@ -117,6 +117,23 @@ func TestEncryptAES128GCMWithKeys_RejectsMalformedP256dh(t *testing.T) {
 	}
 }
 
+func TestEncryptAES128GCMWithKeys_RejectsInvalidBase64P256dh(t *testing.T) {
+	ephemeral, err := ecdh.P256().GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatalf("unexpected keygen error: %v", err)
+	}
+	salt := make([]byte, 16)
+	auth := base64.RawURLEncoding.EncodeToString(make([]byte, 16))
+
+	// "!!!" is not valid base64url, so this exercises the decode-error
+	// branch distinctly from the wrong-length-after-decode branch covered
+	// by TestEncryptAES128GCMWithKeys_RejectsMalformedP256dh.
+	_, err = encryptAES128GCMWithKeys(ephemeral, salt, "not valid base64!!!", auth, []byte("hello"))
+	if err == nil || !strings.Contains(err.Error(), "p256dh") || !strings.Contains(err.Error(), "base64") {
+		t.Fatalf("expected p256dh base64 decode error, got: %v", err)
+	}
+}
+
 func TestEncryptAES128GCMWithKeys_RejectsMalformedAuth(t *testing.T) {
 	ephemeral, err := ecdh.P256().GenerateKey(rand.Reader)
 	if err != nil {
@@ -134,6 +151,27 @@ func TestEncryptAES128GCMWithKeys_RejectsMalformedAuth(t *testing.T) {
 	_, err = encryptAES128GCMWithKeys(ephemeral, salt, p256dh, shortAuth, []byte("hello"))
 	if err == nil || !strings.Contains(err.Error(), "auth") {
 		t.Fatalf("expected auth length error, got: %v", err)
+	}
+}
+
+func TestEncryptAES128GCMWithKeys_RejectsInvalidBase64Auth(t *testing.T) {
+	ephemeral, err := ecdh.P256().GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatalf("unexpected keygen error: %v", err)
+	}
+	receiver, err := ecdh.P256().GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatalf("unexpected keygen error: %v", err)
+	}
+	salt := make([]byte, 16)
+	p256dh := base64.RawURLEncoding.EncodeToString(receiver.PublicKey().Bytes())
+
+	// "!!!" is not valid base64url, so this exercises the decode-error
+	// branch distinctly from the wrong-length-after-decode branch covered
+	// by TestEncryptAES128GCMWithKeys_RejectsMalformedAuth.
+	_, err = encryptAES128GCMWithKeys(ephemeral, salt, p256dh, "not valid base64!!!", []byte("hello"))
+	if err == nil || !strings.Contains(err.Error(), "auth") || !strings.Contains(err.Error(), "base64") {
+		t.Fatalf("expected auth base64 decode error, got: %v", err)
 	}
 }
 
