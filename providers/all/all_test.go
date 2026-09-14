@@ -13,7 +13,7 @@ import (
 // enforcement (a provider that registers itself but isn't added to
 // providers/all silently isn't part of the "one import gets everything"
 // bundle).
-const wantProviderCount = 8
+const wantProviderCount = 9
 
 func TestAll_RegistersEveryBuiltInProvider(t *testing.T) {
 	types := notify.RegisteredTypes()
@@ -22,7 +22,7 @@ func TestAll_RegistersEveryBuiltInProvider(t *testing.T) {
 			wantProviderCount, len(types), types)
 	}
 
-	want := []string{"discord", "email", "gotify", "ntfy", "pushover", "slack", "telegram", "webhook"}
+	want := []string{"discord", "email", "gotify", "ntfy", "pushover", "slack", "telegram", "webhook", "webpush"}
 	registered := make(map[string]bool, len(types))
 	for _, name := range types {
 		registered[name] = true
