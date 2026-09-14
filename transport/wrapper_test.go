@@ -360,6 +360,73 @@ func TestSanitizeOutboundHeadersAllowlist(t *testing.T) {
 	}
 }
 
+func TestSanitizeOutboundHeadersAllowsWebPushHeaders(t *testing.T) {
+	headers := sanitizeOutboundHeaders(map[string]string{
+		"Content-Encoding": "aes128gcm",
+		"TTL":              "2419200",
+		"Urgency":          "high",
+		"Topic":            "my-topic",
+		"X-Foo":            "should-be-stripped",
+	})
+
+	if len(headers) != 4 {
+		t.Fatalf("expected 4 allowed headers, got %d: %#v", len(headers), headers)
+	}
+	for _, key := range []string{"Content-Encoding", "Ttl", "Urgency", "Topic"} {
+		if _, ok := headers[key]; !ok {
+			t.Fatalf("expected %q to be allowed, got %#v", key, headers)
+		}
+	}
+	if _, ok := headers["X-Foo"]; ok {
+		t.Fatalf("expected non-allowlisted header to be stripped, got %#v", headers)
+	}
+}
+
+func TestWrapperSendPassesThroughWebPushHeaders(t *testing.T) {
+	var captured http.Header
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captured = r.Header.Clone()
+		w.WriteHeader(http.StatusCreated)
+	}))
+	defer server.Close()
+
+	wrapper := newTestWrapper(
+		WithRetryPolicy(RetryPolicy{MaxAttempts: 1}),
+		WithClientFactory(func(bool, int) *http.Client { return server.Client() }),
+	)
+
+	_, err := wrapper.Send(context.Background(), Request{
+		URL: server.URL,
+		Headers: map[string]string{
+			"Content-Encoding": "aes128gcm",
+			"TTL":              "2419200",
+			"Urgency":          "high",
+			"Topic":            "my-topic",
+			"X-Foo":            "should-be-stripped",
+		},
+		Body: []byte("ciphertext"),
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if got := captured.Get("Content-Encoding"); got != "aes128gcm" {
+		t.Fatalf("expected Content-Encoding to pass through, got %q", got)
+	}
+	if got := captured.Get("TTL"); got != "2419200" {
+		t.Fatalf("expected TTL to pass through, got %q", got)
+	}
+	if got := captured.Get("Urgency"); got != "high" {
+		t.Fatalf("expected Urgency to pass through, got %q", got)
+	}
+	if got := captured.Get("Topic"); got != "my-topic" {
+		t.Fatalf("expected Topic to pass through, got %q", got)
+	}
+	if got := captured.Get("X-Foo"); got != "" {
+		t.Fatalf("expected non-allowlisted header to be stripped, got %q", got)
+	}
+}
+
 func TestWrapperApplyRedirectGuardNilClient(t *testing.T) {
 	wrapper := newTestWrapper()
 	wrapper.applyRedirectGuard(nil)
