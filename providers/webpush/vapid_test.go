@@ -176,3 +176,33 @@ func TestBuildVAPIDHeader_RejectsInvalidEndpoint(t *testing.T) {
 		t.Fatal("expected an error for an unparsable endpoint")
 	}
 }
+
+// TestBuildVAPIDHeader_MalformedEndpointErrorDoesNotLeakRawEndpoint guards
+// against QA report Finding 1 (MEDIUM, docs/reports/qa_report.md): when
+// endpoint fails net/url.Parse, the returned error must not echo the raw
+// endpoint string back to the caller — net/url's own parse error embeds its
+// full input, and a real PushSubscription.Endpoint commonly carries a
+// bearer-token-equivalent path segment (e.g. FCM's send endpoint), so
+// wrapping that error with %w leaks it into logs/error text.
+func TestBuildVAPIDHeader_MalformedEndpointErrorDoesNotLeakRawEndpoint(t *testing.T) {
+	pubB64, privB64, err := GenerateVAPIDKeyPair()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	secretEndpoint := "https://fcm.googleapis.com/fcm/send/SECRET-BEARER-TOKEN-1234\x7f"
+	_, err = buildVAPIDHeader(pubB64, privB64, "mailto:ops@example.com", secretEndpoint)
+	if err == nil {
+		t.Fatal("expected an error for an unparsable endpoint")
+	}
+
+	if strings.Contains(err.Error(), "SECRET-BEARER-TOKEN") {
+		t.Fatalf("error leaks the raw endpoint (credential-equivalent value): %v", err)
+	}
+	if strings.Contains(err.Error(), secretEndpoint) {
+		t.Fatalf("error leaks the raw endpoint string: %v", err)
+	}
+	if !strings.Contains(err.Error(), "not a valid URL") {
+		t.Fatalf("expected a generic 'not a valid URL' error, got: %v", err)
+	}
+}

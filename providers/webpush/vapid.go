@@ -58,7 +58,12 @@ func buildVAPIDHeader(vapidPublicKey, vapidPrivateKey, vapidSubject, endpoint st
 
 	parsedEndpoint, err := neturl.Parse(endpoint)
 	if err != nil {
-		return "", fmt.Errorf("webpush: parse endpoint for VAPID audience: %w", err)
+		// Deliberately not %w-wrapped: net/url's own parse error embeds the
+		// full raw input, and endpoint (a PushSubscription.Endpoint) often
+		// carries a bearer-token-equivalent path segment for push services
+		// like FCM. Matches transport/wrapper.go's buildSafeRequestURL
+		// convention for the same class of failure (QA report Finding 1).
+		return "", fmt.Errorf("webpush: endpoint is not a valid URL")
 	}
 	aud := parsedEndpoint.Scheme + "://" + parsedEndpoint.Host
 
