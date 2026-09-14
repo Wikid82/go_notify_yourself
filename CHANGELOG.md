@@ -7,6 +7,25 @@ via [GoReleaser](https://goreleaser.com/) on every tagged release.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.3.0](https://github.com/Wikid82/go_notify_yourself/compare/v0.2.3...v0.3.0) (2026-09-14)
+
+
+### Features
+
+* add Charon-style agent pipeline and lefthook pre-commit gate ([447cc61](https://github.com/Wikid82/go_notify_yourself/commit/447cc613d2a8ddc0171da4a487abea4e932565c0))
+* **regconfig:** add IntField helper ([1205a98](https://github.com/Wikid82/go_notify_yourself/commit/1205a98e2e85e089edb08063e543bb3793806379))
+* **transport:** allow Content-Encoding/TTL/Urgency/Topic outbound headers ([99549d1](https://github.com/Wikid82/go_notify_yourself/commit/99549d17b7e03e28d2e7fbe25c84d5ff75f30db0))
+* **webpush:** add Config/Client/New/Send ([87bb57a](https://github.com/Wikid82/go_notify_yourself/commit/87bb57ac1309b13b02b82710f7594bb534706172))
+* **webpush:** add RFC 8291 aes128gcm payload encryption ([a2159c2](https://github.com/Wikid82/go_notify_yourself/commit/a2159c2167015c68cf74358edb065e55903799b8))
+* **webpush:** add VAPID JWT signing (RFC 8292) and GenerateVAPIDKeyPair ([bf6bd65](https://github.com/Wikid82/go_notify_yourself/commit/bf6bd6574f68fb52629039490a40a77f5db9e3c2))
+* **webpush:** add Web Push (VAPID) provider ([#30](https://github.com/Wikid82/go_notify_yourself/issues/30)) ([9411a45](https://github.com/Wikid82/go_notify_yourself/commit/9411a45a74fb6923b1e6d1fdfc880227311725f4))
+* **webpush:** register provider and wire into providers/all ([3b4d574](https://github.com/Wikid82/go_notify_yourself/commit/3b4d57484d54f07b00a26735d9f63899554740fd))
+
+
+### Bug Fixes
+
+* **webpush:** don't echo raw endpoint in VAPID audience-parse error ([8f71f4b](https://github.com/Wikid82/go_notify_yourself/commit/8f71f4b256ec803a4128a21e4b235dc69e214c33))
+
 ## [0.2.3](https://github.com/Wikid82/go_notify_yourself/compare/v0.2.2...v0.2.3) (2026-09-14)
 
 
