@@ -17,8 +17,8 @@ It has four layers:
    HTTP-based provider dispatches through: destination validation, retry/backoff, redirect
    re-validation, and request/response size caps.
 3. **`providers/*`** — one package per notification service (`discord`, `slack`, `gotify`,
-   `pushover`, `ntfy`, `telegram`, `webhook`, `email`), each exposing a typed `Config` struct, a
-   `New(...)` constructor, and a `Client` implementing `notify.Sender`.
+   `pushover`, `ntfy`, `telegram`, `webhook`, `email`, `webpush`), each exposing a typed `Config`
+   struct, a `New(...)` constructor, and a `Client` implementing `notify.Sender`.
 4. **`providers/all`** — a blank-import bundle that registers every built-in provider package with
    the root registry in one line, for consumers who want zero-touch discovery.
 
@@ -189,7 +189,7 @@ preventing an easy, avoidable one.
 
 ### 3.8 Test expectations
 
-Every provider package's tests should cover, mirroring the existing eight providers' patterns:
+Every provider package's tests should cover, mirroring the existing nine providers' patterns:
 
 - **Table-driven `Send` tests** against a fake `transport.Wrapper`, built via an injected
   `ClientFactory` returning a `capturingRoundTripper` (see any `providers/*/*_test.go` for the

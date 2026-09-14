@@ -23,8 +23,8 @@ re-implementing the same things badly.
 
 - SSRF-safe outbound HTTP dispatch with retry/backoff (`transport.Wrapper`) — destination
   validation, redirect re-validation, request/response size caps.
-- A uniform `Sender` interface across eight built-in provider types: Discord, Slack, Gotify,
-  Pushover, Ntfy, Telegram, generic webhook, and email.
+- A uniform `Sender` interface across nine built-in provider types: Discord, Slack, Gotify,
+  Pushover, Ntfy, Telegram, generic webhook, email, and direct browser Web Push.
 - JSON payload templating with a shared `text/template` engine plus a `toJSON` helper.
 - A self-registering factory/discovery layer (`notify.Register`/`notify.New`/
   `notify.RegisteredTypes`) for constructing a `Sender` by name at runtime.
@@ -41,7 +41,7 @@ re-implementing the same things badly.
 **Reach for it if:**
 
 - You need two or more of {Discord, Slack, Gotify, Pushover, Ntfy, Telegram, generic webhook,
-  email} dispatch.
+  email, webpush} dispatch.
 - You want retry/backoff and SSRF hardening without writing it yourself.
 - You're fine supplying your own HTTP client factory / SSRF policy / SMTP mailer via the module's
   dependency-injection seams (see "Why it's built this way" below).
@@ -179,7 +179,14 @@ for _, sub := range subscriptions { // e.g. loaded from your own storage
 		Auth:            sub.Auth,
 	}, wrapper)
 	if err := sender.Send(ctx, msg); err != nil {
-		log.Printf("webpush to %s failed: %v", sub.Endpoint, err)
+		// Log the endpoint's host, not the full endpoint: for push services like
+		// FCM, sub.Endpoint's path commonly embeds a bearer-token-equivalent
+		// segment that shouldn't end up in your logs.
+		host := "unknown"
+		if u, parseErr := neturl.Parse(sub.Endpoint); parseErr == nil {
+			host = u.Host
+		}
+		log.Printf("webpush to %s failed: %v", host, err)
 	}
 }
 ```

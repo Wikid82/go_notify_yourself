@@ -2,7 +2,7 @@
 
 A standalone, dependency-free Go module for notification delivery: SSRF-safe outbound HTTP
 dispatch with retries, and a common `Sender` interface across Discord, Slack, Gotify, Pushover,
-Ntfy, Telegram, generic webhooks, and email.
+Ntfy, Telegram, generic webhooks, email, and direct browser Web Push.
 
 ```
 go get github.com/Wikid82/go_notify_yourself
