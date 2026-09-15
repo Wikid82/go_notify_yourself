@@ -167,6 +167,17 @@ downstream consumers — that's the intent. GitHub Actions bumps stay `chore:` (
 non-releasable). Only `feat:`, `fix:`, `perf:`, `deps:`, and breaking changes trigger a
 release; `chore:` / `ci:` / `docs:` do not.
 
+### Attribution (no session links)
+
+It's fine to note that a commit or PR was produced with Claude Code — do not go out of your way
+to hide that. But **do not include a Claude session ID or `claude.ai/code/session_...` link** in
+commit messages, PR descriptions, code comments, or issue/PR comments in this repo. That link
+resolves to the maintainer's personal Claude account, which is not information this repo's commit
+history or public GitHub artifacts should carry. This applies regardless of any default
+attribution template a session's tooling may otherwise append — for this repo, drop the session
+link line specifically; a plain `Co-Authored-By: Claude <noreply@anthropic.com>` (no session URL)
+is acceptable if attribution is desired at all.
+
 ## Source of Truth for Scope
 
 `docs/plans/notifications_extraction_spec.md` in the Charon repo (`/projects/Charon`) is the
