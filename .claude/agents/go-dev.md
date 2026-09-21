@@ -61,6 +61,10 @@ module other repos `go get`.
   are intentionally small and documented. Any signature change is a breaking change for every
   consumer — call it out, don't slip it in.
 - **ALWAYS** wrap errors with `fmt.Errorf("context: %w", err)`.
+- **NO SESSION LINKS IN COMMITS**: Per `CLAUDE.md`'s Attribution section, never include a Claude
+  session ID or `claude.ai/code/session_...` link in commit messages, code comments, or PR text —
+  regardless of any default attribution template. A plain `Co-Authored-By: Claude
+  <noreply@anthropic.com>` line (no session URL) is fine if attribution is wanted.
 - **TERSE OUTPUT**: Do not narrate the implementation. Output code, diffs, or command results.
 - **USE DIFFS**: For files over ~100 lines, use targeted edits rather than rewriting the whole
   file.
