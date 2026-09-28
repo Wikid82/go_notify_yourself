@@ -8,8 +8,10 @@ name: Propagate main to development
 #
 # Also fires after a routine nightly -> main promotion merge, but that's a
 # no-op in practice: main's content after that merge already matches
-# development (it came from development via nightly), so the ahead-count
-# check below finds nothing to propagate and skips creating a PR.
+# development (it came from development via nightly), so the file-diff
+# check below finds nothing to propagate and skips creating a PR — even if
+# main is nominally some commits ahead (e.g. a merge commit that round-trips
+# back to the same tree).
 
 on:
   push:
@@ -37,12 +39,17 @@ jobs:
         id: diff
         run: |
           git fetch origin main development
-          AHEAD=$(git rev-list --count origin/development..origin/main)
-          echo "main is $AHEAD commits ahead of development"
-          echo "ahead=$AHEAD" >> "$GITHUB_OUTPUT"
+          if git diff --quiet origin/development origin/main; then
+            echo "main has no file-level differences from development; skipping PR"
+            echo "has_diff=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "main has file-level differences from development:"
+            git diff --stat origin/development origin/main
+            echo "has_diff=true" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Create or update propagation PR
-        if: steps.diff.outputs.ahead != '0'
+        if: steps.diff.outputs.has_diff == 'true'
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
         with:
           script: |
