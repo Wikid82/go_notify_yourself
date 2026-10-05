@@ -23,6 +23,8 @@ echo "==========================================================================
 go get go@latest toolchain@latest
 # -t includes test-only dependencies, which Renovate also tracks
 go get -u -t ./...
+# Tool directives (e.g. lefthook) aren't covered by ./..., so bump them explicitly
+go get -u tool
 go mod tidy
 go mod verify
 
