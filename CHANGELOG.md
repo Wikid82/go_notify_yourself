@@ -7,6 +7,14 @@ via [GoReleaser](https://goreleaser.com/) on every tagged release.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.3.1](https://github.com/Wikid82/go_notify_yourself/compare/v0.3.0...v0.3.1) (2026-10-05)
+
+
+### Bug Fixes
+
+* **deps:** update lefthook to v2.1.15 and remove old version ([a62e86b](https://github.com/Wikid82/go_notify_yourself/commit/a62e86b638a38755fc781dc033ccf13f73b0187c))
+* update propagation logic to check for file-level differences instead of commit count ([9130f77](https://github.com/Wikid82/go_notify_yourself/commit/9130f7734089f858ed18352b842f7d427bd5f088))
+
 ## [0.3.0](https://github.com/Wikid82/go_notify_yourself/compare/v0.2.3...v0.3.0) (2026-09-14)
 
 
