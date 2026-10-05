@@ -36,6 +36,8 @@ jobs:
         language: [go]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
 
       # KNOWN GAP: as of CodeQL CLI 2.26.3, the bundled Go extractor is
       # built with go1.26.5. go.mod declares `go 1.27.0`, so every source
